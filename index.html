@@ -165,7 +165,6 @@
 <script>
 // ====== CONFIG ======
 const API_URL = 'https://script.google.com/macros/s/AKfycbxiXzto50FphNaBl7zyVwpRIU7HK91_LRvtA3hdzXbCDG75tE17XmwFpjJmCAszvHcy/exec';
-  
 
 // ====== STATE ======
 let session = null; // { role, name, section }
@@ -230,6 +229,7 @@ function buildNav() {
     ['inventory', 'Inventory'],
     ['issue', 'Issue Gear'],
     ['members', 'Members'],
+    ['message', 'Send Message'],
   ];
   if (session.role === 'qm') {
     tabs.push(['addstock', 'Add Stock']);
@@ -262,7 +262,8 @@ function showTab(tab) {
     issue: renderIssue,
     members: renderMembers,
     addstock: renderAddStock,
-    reports: renderReports
+    reports: renderReports,
+    message: renderMessage
   };
   (renderers[tab] || renderInventory)();
 }
@@ -518,6 +519,110 @@ async function submitAddStock() {
   } catch (e) {
     toast(e.message, 'error');
   }
+}
+
+// ====== SEND MESSAGE TAB ======
+let msgQueue = [];
+let msgIndex = 0;
+let msgText = '';
+
+function normalizePhone(raw) {
+  if (!raw) return '';
+  return String(raw).replace(/[^\d+]/g, '');
+}
+
+async function renderMessage() {
+  const main = document.getElementById('main');
+  const members = await api('members', { section: sectionFilterParam(), active: 'true' });
+  const withPhone = members.filter(m => normalizePhone(m.Contact));
+  const withoutPhone = members.filter(m => !normalizePhone(m.Contact));
+
+  let html = `
+  <div class="panel">
+    <h2>Send Message</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button class="btn small ghost" onclick="toggleAllMembers(true)">Select all</button>
+      <button class="btn small ghost" onclick="toggleAllMembers(false)">Select none</button>
+    </div>
+    <div id="member-checklist" style="max-height:280px; overflow-y:auto; margin-bottom:14px;">`;
+
+  if (!withPhone.length) {
+    html += '<div class="empty">No members with a mobile number on file yet — add numbers on the Members tab first.</div>';
+  } else {
+    withPhone.forEach(m => {
+      html += `<div style="padding:6px 0"><label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" class="msg-member-cb" value="${esc(m.MemberID)}" data-name="${esc(m.Name)}" data-phone="${esc(normalizePhone(m.Contact))}" checked>
+        ${esc(m.Name)} <span style="color:var(--text-dim);font-size:0.8rem">${esc(m.Section)} · ${esc(m.Contact)}</span>
+      </label></div>`;
+    });
+  }
+  html += '</div>';
+
+  if (withoutPhone.length) {
+    html += `<div class="empty">No number on file for: ${withoutPhone.map(m => esc(m.Name)).join(', ')}</div>`;
+  }
+
+  html += `
+    <div class="field" style="max-width:520px">
+      <label>Message</label>
+      <textarea id="msg-text" rows="4" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-family:inherit;resize:vertical"></textarea>
+    </div>
+    <button class="btn" onclick="startMessageQueue()">Start Sending</button>
+  </div>
+  <div class="panel" id="msg-queue-panel" style="display:none"></div>`;
+
+  main.innerHTML = html;
+}
+
+function toggleAllMembers(checked) {
+  document.querySelectorAll('.msg-member-cb').forEach(cb => cb.checked = checked);
+}
+
+function startMessageQueue() {
+  const text = document.getElementById('msg-text').value.trim();
+  if (!text) { toast('Type a message first', 'error'); return; }
+  const checked = Array.from(document.querySelectorAll('.msg-member-cb:checked'));
+  if (!checked.length) { toast('Select at least one member', 'error'); return; }
+
+  msgQueue = checked.map(cb => ({ name: cb.dataset.name, phone: cb.dataset.phone }));
+  msgIndex = 0;
+  msgText = text;
+  renderQueueStep();
+}
+
+function renderQueueStep() {
+  const panel = document.getElementById('msg-queue-panel');
+  panel.style.display = 'block';
+
+  if (msgIndex >= msgQueue.length) {
+    panel.innerHTML = `<h2>Done</h2><p>Sent to all ${msgQueue.length} selected member(s). You can select a new group above and send again.</p>`;
+    return;
+  }
+
+  const current = msgQueue[msgIndex];
+  const smsHref = 'sms:' + encodeURIComponent(current.phone) + '&body=' + encodeURIComponent(msgText);
+
+  panel.innerHTML = `
+    <h2>Sending (${msgIndex + 1} of ${msgQueue.length})</h2>
+    <p>Next: <strong>${esc(current.name)}</strong> (${esc(current.phone)})</p>
+    <div class="row">
+      <a class="btn" href="${smsHref}">Open Message to ${esc(current.name)}</a>
+      <button class="btn ghost" onclick="skipQueueStep()">Skip</button>
+      <button class="btn ghost" onclick="nextQueueStep()">Sent — Next</button>
+    </div>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-top:10px">
+      Tap "Open Message", hit Send in Messages, then switch back here and tap "Sent — Next".
+    </p>`;
+}
+
+function nextQueueStep() {
+  msgIndex++;
+  renderQueueStep();
+}
+
+function skipQueueStep() {
+  msgIndex++;
+  renderQueueStep();
 }
 
 // ====== REPORTS TAB (QM only) ======
