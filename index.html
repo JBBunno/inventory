@@ -1,0 +1,558 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Band Quartermaster</title>
+<style>
+  :root {
+    --bg: #0d1e35;
+    --surface: #162640;
+    --surface-2: #1c2f4d;
+    --teal: #5ab4d4;
+    --amber: #e89820;
+    --text: #eef3f8;
+    --text-dim: #9db0c8;
+    --border: #26375a;
+    --danger: #d16060;
+    --good: #5abf8a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Calibri Light', Calibri, 'Segoe UI', sans-serif;
+    font-weight: 300;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  h1, h2, h3 { font-weight: 300; letter-spacing: 0.3px; margin: 0 0 12px 0; }
+  a { color: var(--teal); }
+
+  /* ---- Login screen ---- */
+  #login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    flex-direction: column;
+    gap: 18px;
+  }
+  #login-screen h1 { font-size: 1.6rem; }
+  #login-screen .tag { color: var(--text-dim); margin-top: -14px; margin-bottom: 8px; font-size: 0.9rem; }
+  #login-screen input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-size: 1.4rem;
+    letter-spacing: 4px;
+    text-align: center;
+    width: 220px;
+  }
+  #login-screen button, .btn {
+    background: var(--teal);
+    color: #06141f;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-weight: 400;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  #login-screen button:hover, .btn:hover { filter: brightness(1.1); }
+  #login-error { color: var(--danger); min-height: 20px; font-size: 0.9rem; }
+
+  /* ---- App shell ---- */
+  #app { display: none; }
+  header {
+    background: var(--surface);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header .who { color: var(--text-dim); font-size: 0.85rem; }
+  header .who b { color: var(--amber); font-weight: 400; }
+  nav {
+    display: flex;
+    gap: 4px;
+    padding: 12px 24px 0 24px;
+    flex-wrap: wrap;
+  }
+  nav button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  nav button.active {
+    color: var(--teal);
+    border-bottom: 2px solid var(--teal);
+  }
+  main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .field label { font-size: 0.78rem; color: var(--text-dim); }
+  select, input[type=text], input[type=number] {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 10px;
+    border-radius: 6px;
+    font-family: inherit;
+    min-width: 160px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-weight: 400; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  tr:hover td { background: var(--surface-2); }
+  .badge { padding: 3px 9px; border-radius: 12px; font-size: 0.75rem; display: inline-block; }
+  .badge.instore { background: rgba(90,191,138,0.15); color: var(--good); }
+  .badge.issued { background: rgba(232,152,32,0.15); color: var(--amber); }
+  .badge.other { background: rgba(209,96,96,0.15); color: var(--danger); }
+  .btn.small { padding: 6px 12px; font-size: 0.82rem; }
+  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .empty { color: var(--text-dim); font-style: italic; padding: 16px 0; }
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    padding: 12px 18px; border-radius: 8px; font-size: 0.9rem;
+    display: none;
+  }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+  .toast.success { border-color: var(--good); color: var(--good); }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1>Band Quartermaster</h1>
+  <div class="tag">Enter your PIN</div>
+  <input id="pin-input" type="password" inputmode="numeric" maxlength="8" autofocus>
+  <button class="btn" onclick="doLogin()">Enter</button>
+  <div id="login-error"></div>
+</div>
+
+<div id="app">
+  <header>
+    <div><strong>Band Quartermaster</strong></div>
+    <div class="who">Signed in as <b id="who-name"></b> <span id="who-section"></span> &nbsp; <a href="#" onclick="logout();return false;">Sign out</a></div>
+  </header>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== CONFIG ======
+const API_URL = 'https://script.google.com/macros/s/AKfycbxwGZd3yrDdHvYSnusre5-dNsbtdeH5qZtiw8928pcsVp6q3bgOzrv79zqYP5sWG-KT/exec';
+
+// ====== STATE ======
+let session = null; // { role, name, section }
+let meta = null;     // { categories, sections }
+let currentTab = 'inventory';
+
+// ====== API helper (GET-only) ======
+async function api(action, params = {}) {
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  Object.keys(params).forEach(k => {
+    if (params[k] !== undefined && params[k] !== null) url.searchParams.set(k, params[k]);
+  });
+  const res = await fetch(url.toString());
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Request failed');
+  return json.data;
+}
+
+function toast(msg, kind) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (kind || '');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3200);
+}
+
+// ====== LOGIN ======
+async function doLogin() {
+  const pin = document.getElementById('pin-input').value.trim();
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!pin) return;
+  try {
+    session = await api('login', { pin });
+    meta = await api('meta');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('who-name').textContent = session.name;
+    document.getElementById('who-section').textContent = session.section ? '(' + session.section + ')' : '(Quartermaster)';
+    buildNav();
+    showTab('inventory');
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+
+function logout() {
+  session = null;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+document.getElementById('pin-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ====== NAV ======
+function buildNav() {
+  const tabs = [
+    ['inventory', 'Inventory'],
+    ['issue', 'Issue Gear'],
+    ['members', 'Members'],
+  ];
+  if (session.role === 'qm') {
+    tabs.push(['addstock', 'Add Stock']);
+    tabs.push(['reports', 'Reports']);
+  }
+  const nav = document.getElementById('nav');
+  nav.innerHTML = '';
+  tabs.forEach(([key, label]) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => showTab(key);
+    b.dataset.tab = key;
+    nav.appendChild(b);
+  });
+}
+
+function setActiveNav(tab) {
+  document.querySelectorAll('#nav button').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  setActiveNav(tab);
+  const main = document.getElementById('main');
+  main.innerHTML = '<div class="empty">Loading…</div>';
+  const renderers = {
+    inventory: renderInventory,
+    issue: renderIssue,
+    members: renderMembers,
+    addstock: renderAddStock,
+    reports: renderReports
+  };
+  (renderers[tab] || renderInventory)();
+}
+
+function sectionFilterParam() {
+  return session.role === 'leader' ? session.section : undefined;
+}
+
+function esc(s) { return (s === undefined || s === null) ? '' : String(s); }
+
+// ====== INVENTORY TAB ======
+async function renderInventory() {
+  const [items, bulk] = await Promise.all([api('items', {}), api('bulkstock', {})]);
+  const main = document.getElementById('main');
+
+  let html = '<div class="panel"><h2>Serialized Gear</h2>';
+  if (!items.length) {
+    html += '<div class="empty">No serialized items yet. Add stock from the Add Stock tab.</div>';
+  } else {
+    html += '<table><tr><th>ID</th><th>Category</th><th>Size</th><th>Status</th><th>Condition</th></tr>';
+    items.sort((a,b) => a.Category.localeCompare(b.Category)).forEach(it => {
+      const badgeClass = it.Status === 'In Store' ? 'instore' : (it.Status === 'Issued' ? 'issued' : 'other');
+      html += `<tr><td>${esc(it.ItemID)}</td><td>${esc(it.Category)}</td><td>${esc(it.Size)}</td>
+        <td><span class="badge ${badgeClass}">${esc(it.Status)}</span></td><td>${esc(it.Condition)}</td></tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+
+  html += '<div class="panel"><h2>Bulk Stock</h2>';
+  if (!bulk.length) {
+    html += '<div class="empty">No bulk stock yet.</div>';
+  } else {
+    html += '<table><tr><th>Category</th><th>Size</th><th>In Store</th><th>Issued</th></tr>';
+    bulk.forEach(b => {
+      html += `<tr><td>${esc(b.Category)}</td><td>${esc(b.Size)}</td><td>${esc(b.QtyInStore)}</td><td>${esc(b.QtyIssued)}</td></tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+
+  main.innerHTML = html;
+}
+
+// ====== ISSUE / RETURN TAB ======
+async function renderIssue() {
+  const main = document.getElementById('main');
+  const members = await api('members', { section: sectionFilterParam(), active: 'true' });
+  const openAssignments = await api('assignments', { section: sectionFilterParam(), openOnly: 'true' });
+
+  const catOptions = meta.categories.map(c => `<option value="${esc(c.Category)}">${esc(c.Category)}</option>`).join('');
+  const memberOptions = members.map(m => `<option value="${esc(m.MemberID)}">${esc(m.Name)}</option>`).join('');
+
+  let html = `
+  <div class="panel">
+    <h2>Issue Gear</h2>
+    <div class="row">
+      <div class="field"><label>Member</label>
+        <select id="issue-member">${memberOptions}</select>
+      </div>
+      <div class="field"><label>Category</label>
+        <select id="issue-category" onchange="onIssueCategoryChange()">${catOptions}</select>
+      </div>
+      <div class="field" id="issue-size-wrap" style="display:none">
+        <label>Size</label>
+        <select id="issue-size"></select>
+      </div>
+      <div class="field" id="issue-item-wrap" style="display:none">
+        <label>Item</label>
+        <select id="issue-item"></select>
+      </div>
+      <div class="field" id="issue-qty-wrap" style="display:none">
+        <label>Qty</label>
+        <input type="number" id="issue-qty" value="1" min="1" style="min-width:70px">
+      </div>
+      <div class="field"><button class="btn" onclick="submitIssue()">Issue</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Currently Issued</h2>
+    ${renderOpenAssignmentsTable(openAssignments, members)}
+  </div>`;
+
+  main.innerHTML = html;
+  onIssueCategoryChange();
+}
+
+function renderOpenAssignmentsTable(assignments, members) {
+  if (!assignments.length) return '<div class="empty">Nothing currently issued.</div>';
+  const memberName = id => (members.find(m => m.MemberID === id) || {}).Name || id;
+  let html = '<table><tr><th>Member</th><th>Category</th><th>Item / Qty</th><th>Issued</th><th></th></tr>';
+  assignments.forEach(a => {
+    const dateStr = a.DateIssued ? new Date(a.DateIssued).toLocaleDateString() : '';
+    html += `<tr><td>${esc(memberName(a.MemberID))}</td><td>${esc(a.Category)}</td>
+      <td>${a.ItemID ? esc(a.ItemID) : (esc(a.Qty) + ' x ' + esc(a.Size || ''))}</td>
+      <td>${dateStr}</td>
+      <td><button class="btn small ghost" onclick="returnAssignment('${esc(a.AssignmentID)}')">Return</button></td></tr>`;
+  });
+  html += '</table>';
+  return html;
+}
+
+async function onIssueCategoryChange() {
+  const cat = document.getElementById('issue-category').value;
+  const cfg = meta.categories.find(c => c.Category === cat);
+  const sizeWrap = document.getElementById('issue-size-wrap');
+  const itemWrap = document.getElementById('issue-item-wrap');
+  const qtyWrap = document.getElementById('issue-qty-wrap');
+
+  sizeWrap.style.display = cfg.SizeApplies === 'Y' ? 'flex' : 'none';
+  if (cfg.SizeApplies === 'Y') {
+    const sizeSel = document.getElementById('issue-size');
+    sizeSel.innerHTML = String(cfg.SizeOptions).split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('');
+  }
+
+  if (cfg.Tier === 'serialized') {
+    qtyWrap.style.display = 'none';
+    itemWrap.style.display = 'flex';
+    const items = await api('items', { category: cat, status: 'In Store' });
+    const itemSel = document.getElementById('issue-item');
+    itemSel.innerHTML = items.length
+      ? items.map(it => `<option value="${esc(it.ItemID)}">${esc(it.ItemID)} ${it.Size ? '(' + esc(it.Size) + ')' : ''}</option>`).join('')
+      : '<option value="">No stock in store</option>';
+  } else {
+    itemWrap.style.display = 'none';
+    qtyWrap.style.display = 'flex';
+  }
+}
+
+async function submitIssue() {
+  const cat = document.getElementById('issue-category').value;
+  const cfg = meta.categories.find(c => c.Category === cat);
+  const memberId = document.getElementById('issue-member').value;
+  if (!memberId) { toast('No member selected', 'error'); return; }
+  const size = cfg.SizeApplies === 'Y' ? document.getElementById('issue-size').value : '';
+
+  try {
+    if (cfg.Tier === 'serialized') {
+      const itemId = document.getElementById('issue-item').value;
+      if (!itemId) { toast('No item available to issue', 'error'); return; }
+      await api('issueitem', { memberId, category: cat, itemId, size, issuedBy: session.name });
+    } else {
+      const qty = document.getElementById('issue-qty').value || 1;
+      await api('issueitem', { memberId, category: cat, size, qty, issuedBy: session.name });
+    }
+    toast('Issued', 'success');
+    renderIssue();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function returnAssignment(assignmentId) {
+  try {
+    await api('returnitem', { assignmentId, condition: 'Good' });
+    toast('Returned', 'success');
+    renderIssue();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ====== MEMBERS TAB ======
+async function renderMembers() {
+  const main = document.getElementById('main');
+  const members = await api('members', { section: sectionFilterParam() });
+  const assignments = await api('assignments', { section: sectionFilterParam(), openOnly: 'true' });
+
+  let html = '<div class="panel"><h2>Members</h2>';
+  if (session.role === 'qm') {
+    html += `
+    <div class="row">
+      <div class="field"><label>Name</label><input type="text" id="new-member-name"></div>
+      <div class="field"><label>Section</label><input type="text" id="new-member-section"></div>
+      <div class="field"><label>Contact</label><input type="text" id="new-member-contact"></div>
+      <div class="field"><button class="btn" onclick="addMember()">Add Member</button></div>
+    </div>`;
+  }
+
+  if (!members.length) {
+    html += '<div class="empty">No members yet.</div>';
+  } else {
+    html += '<table><tr><th>Name</th><th>Section</th><th>Items Held</th></tr>';
+    members.forEach(m => {
+      const count = assignments.filter(a => a.MemberID === m.MemberID).length;
+      html += `<tr><td>${esc(m.Name)}</td><td>${esc(m.Section)}</td><td>${count}</td></tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+async function addMember() {
+  const name = document.getElementById('new-member-name').value.trim();
+  const section = document.getElementById('new-member-section').value.trim();
+  const contact = document.getElementById('new-member-contact').value.trim();
+  if (!name || !section) { toast('Name and section required', 'error'); return; }
+  try {
+    await api('addmember', { name, section, contact });
+    toast('Member added', 'success');
+    renderMembers();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ====== ADD STOCK TAB (QM only) ======
+async function renderAddStock() {
+  const main = document.getElementById('main');
+  const catOptions = meta.categories.map(c => `<option value="${esc(c.Category)}">${esc(c.Category)}</option>`).join('');
+  main.innerHTML = `
+  <div class="panel">
+    <h2>Add Stock</h2>
+    <div class="row">
+      <div class="field"><label>Category</label>
+        <select id="stock-category" onchange="onStockCategoryChange()">${catOptions}</select>
+      </div>
+      <div class="field" id="stock-size-wrap" style="display:none">
+        <label>Size</label><select id="stock-size"></select>
+      </div>
+      <div class="field"><label>Qty</label><input type="number" id="stock-qty" value="1" min="1" style="min-width:70px"></div>
+      <div class="field" id="stock-condition-wrap"><label>Condition</label><input type="text" id="stock-condition" value="Good"></div>
+      <div class="field"><button class="btn" onclick="submitAddStock()">Add to Store</button></div>
+    </div>
+  </div>`;
+  onStockCategoryChange();
+}
+
+function onStockCategoryChange() {
+  const cat = document.getElementById('stock-category').value;
+  const cfg = meta.categories.find(c => c.Category === cat);
+  const sizeWrap = document.getElementById('stock-size-wrap');
+  sizeWrap.style.display = cfg.SizeApplies === 'Y' ? 'flex' : 'none';
+  if (cfg.SizeApplies === 'Y') {
+    document.getElementById('stock-size').innerHTML =
+      String(cfg.SizeOptions).split(',').map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('');
+  }
+  document.getElementById('stock-condition-wrap').style.display = cfg.Tier === 'serialized' ? 'flex' : 'none';
+}
+
+async function submitAddStock() {
+  const category = document.getElementById('stock-category').value;
+  const cfg = meta.categories.find(c => c.Category === category);
+  const size = cfg.SizeApplies === 'Y' ? document.getElementById('stock-size').value : '';
+  const qty = document.getElementById('stock-qty').value || 1;
+  const condition = document.getElementById('stock-condition').value;
+  try {
+    await api('addstock', { category, size, qty, condition });
+    toast('Stock added', 'success');
+    renderAddStock();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ====== REPORTS TAB (QM only) ======
+async function renderReports() {
+  const main = document.getElementById('main');
+  const [items, bulk, assignments, members] = await Promise.all([
+    api('items', {}), api('bulkstock', {}), api('assignments', { openOnly: 'true' }), api('members', {})
+  ]);
+  const memberName = id => (members.find(m => m.MemberID === id) || {}).Name || id;
+
+  const totalItems = items.length;
+  const issuedItems = items.filter(i => i.Status === 'Issued').length;
+  const totalBulkIssued = bulk.reduce((s, b) => s + (parseInt(b.QtyIssued, 10) || 0), 0);
+
+  let html = `<div class="panel"><h2>Snapshot</h2>
+    <p>${totalItems} serialized items tracked, ${issuedItems} currently issued.<br>
+    ${totalBulkIssued} bulk units currently issued across all categories.</p>
+  </div>`;
+
+  html += '<div class="panel"><h2>Full "Who Has What" Report</h2>';
+  if (!assignments.length) {
+    html += '<div class="empty">Nothing currently issued.</div>';
+  } else {
+    html += '<table><tr><th>Member</th><th>Category</th><th>Item / Qty</th><th>Issued</th></tr>';
+    assignments
+      .sort((a, b) => memberName(a.MemberID).localeCompare(memberName(b.MemberID)))
+      .forEach(a => {
+        const dateStr = a.DateIssued ? new Date(a.DateIssued).toLocaleDateString() : '';
+        html += `<tr><td>${esc(memberName(a.MemberID))}</td><td>${esc(a.Category)}</td>
+          <td>${a.ItemID ? esc(a.ItemID) : (esc(a.Qty) + ' x ' + esc(a.Size || ''))}</td><td>${dateStr}</td></tr>`;
+      });
+    html += '</table>';
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+</script>
+</body>
+</html>
